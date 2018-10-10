@@ -66,7 +66,7 @@ public class Switch extends Device
 			try{
 				sendPacket(etherPacket, iface);
 			}
-			catch (Exception){
+			catch (Exception e){
 				System.out.println("Error in forwarding");
 			}
 
@@ -80,7 +80,7 @@ public class Switch extends Device
 				try{
 					sendPacket(etherPacket, entry.getValue());
 				}
-				catch (Exception){
+				catch (Exception e){
 					System.out.println("Error in broadcasting");
 				}
 			}
@@ -89,7 +89,7 @@ public class Switch extends Device
 
 		//check for source MAC address
 		if(!macToPort.containsKey(macAddressSource)){
-			macToPort(macAddressSource, inIface);
+			macToPort.put(macAddressSource, inIface);
 		}
 	}
 
