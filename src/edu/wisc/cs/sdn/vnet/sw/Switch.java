@@ -5,6 +5,8 @@ import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
 
+import java.io.*;
+
 /**
  * @author Aaron Gember-Jacobson
  */
@@ -23,13 +25,11 @@ import edu.wisc.cs.sdn.vnet.Iface;
 */
 public class Switch extends Device
 {
-	//public static timeout = 15;
 
-	//switchTable table = new switchTable()
 	Map<Object, Iface> macToPort = new HashMap<Object, Iface>();
+	Map<Object, long>trackTime = new HashMap<Object, long>();
+	long startTime, curTime;
 
-   // assuming table size to be no more than 1024
-  // private static final int maxTableSize = 1024;
 
 	/**
 	 * Creates a router for a specific host.
@@ -56,6 +56,20 @@ public class Switch extends Device
 		/* TODO: Handle packets                                             */
 		
 		/********************************************************************/
+
+
+		//check for timeout
+		for (Map.Entry<Object, long> entry : trackTime.entrySet()){
+			curTime = System.nanoTime();
+			if(((curTime - entry.getValue()) / Math.pow(10, 9)) >15){
+				macToPort.remove(entry.getKey());
+				trackTime.remove(entry.getKey());
+			}
+			//reset timeout
+			else {
+				trackTime.put(entry.getKey(), System.nanoTime());
+			}
+		}
 
 
 		//check for destination MAC address
@@ -90,9 +104,11 @@ public class Switch extends Device
 		//check for source MAC address
 		if(!macToPort.containsKey(macAddressSource)){
 			macToPort.put(macAddressSource, inIface);
+			trackTime.put(macAddressSource, System.nanoTime());
 		}
+
 	}
 
-	//TODO timeout
+
 
 }
