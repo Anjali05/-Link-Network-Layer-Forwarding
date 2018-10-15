@@ -5,6 +5,7 @@ import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
 
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
 
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
@@ -90,11 +91,11 @@ public class Router extends Device
 		// verify checksum
 		IPv4 header = (IPv4) etherPacket.getPayload();
 
-		short checksum = header.getCheksum();
+		short checksum = header.getChecksum();
 		header.resetChecksum();
 
 		byte[] data = header.serialize();
-		short newChecksum = header.deserialize(data, 0, data.length).getCheksum();
+		short newChecksum = ((IPv4) header.deserialize(data, 0, data.length)).getChecksum();
 
 		if (newChecksum != checksum)
 			return;
@@ -125,8 +126,8 @@ public class Router extends Device
 		if(arpEntry == null)
 			return;
 
-		etherPacket.setDestinationMACAddress(arpEntry.getMAC().toString());
-		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMACAddress().toString());
+		etherPacket.setDestinationMACAddress(arpEntry.getMac().toString());
+		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toString());
 
         header.resetChecksum();
         header.serialize();
