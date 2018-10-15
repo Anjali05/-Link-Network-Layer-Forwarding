@@ -83,9 +83,55 @@ public class Router extends Device
                 etherPacket.toString().replace("\n", "\n\t"));
 		
 		/********************************************************************/
-		/* TODO: Handle packets                                             */
-		
-		
+		// check if packet is IPv4
+		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4)
+			return;
+
+		// verify checksum
+		IPv4 header = (IPv4) etherPacket.getPayload();
+
+		short checksum = header.getCheksum();
+		header.resetChecksum();
+
+		byte[] data = header.serialize();
+		short newChecksum = header.deserialize(data, 0, data.length).getCheksum();
+
+		if (newChecksum != checksum)
+			return;
+
+		// decrement TTL
+		int ttl = (int) header.getTtl();
+		ttl--;
+
+		if (ttl == 0)
+			return;
+
+		header.setTtl((byte) ttl);
+
+		// check interfaces
+		for(Iface iface : this.interfaces.values()){
+			if (iface.getIpAddress() == header.getDestinationAddress())
+				return;
+		}
+
+		// forward packet
+		RouteEntry routeEntry = this.routeTable.lookup(header.getDestinationAddress());
+		if (routeEntry == null)
+			return;
+
+		int destAddress = routeEntry.getGatewayAddress() == 0 ?
+				routeEntry.getDestinationAddress() :  routeEntry.getGatewayAddress();
+		ArpEntry arpEntry = this.arpCache.lookup(destAddress);
+		if(arpEntry == null)
+			return;
+
+		etherPacket.setDestinationMACAddress(arpEntry.getMAC().toString());
+		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMACAddress().toString());
+
+        header.resetChecksum();
+        header.serialize();
+
+        this.sendPacket(etherPacket, routeEntry.getInterface());
 		/********************************************************************/
 	}
 }
