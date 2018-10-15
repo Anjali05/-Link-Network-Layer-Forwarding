@@ -6,6 +6,7 @@ import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
 
 import java.io.*;
+import java.util.*;
 
 /**
  * @author Aaron Gember-Jacobson
@@ -27,7 +28,7 @@ public class Switch extends Device
 {
 
 	Map<Object, Iface> macToPort = new HashMap<Object, Iface>();
-	Map<Object, long>trackTime = new HashMap<Object, long>();
+	Map<Object, Long>trackTime = new HashMap<Object, Long>();
 	long startTime, curTime;
 
 
@@ -59,7 +60,7 @@ public class Switch extends Device
 
 
 		//check for timeout
-		for (Map.Entry<Object, long> entry : trackTime.entrySet()){
+		for (Map.Entry<Object, Long> entry : trackTime.entrySet()){
 			curTime = System.nanoTime();
 			if(((curTime - entry.getValue()) / Math.pow(10, 9)) >15){
 				macToPort.remove(entry.getKey());
@@ -108,7 +109,4 @@ public class Switch extends Device
 		}
 
 	}
-
-
-
 }
