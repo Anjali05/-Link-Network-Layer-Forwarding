@@ -1,34 +1,26 @@
 package edu.wisc.cs.sdn.vnet.sw;
 
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.MACAddress;
+
 import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
 
 import java.io.*;
-import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Aaron Gember-Jacobson
  */
 
 
-/*public class switchTable{
-	//string hostname;
-	Object  macAddress;
-	Iface inIface;
 
-	public switchTable(Object macAddress, Iface inIface){
-		this.macAddress = macAddress;
-		this.inIface = inIface;
-	}
-}
-*/
 public class Switch extends Device
 {
 
-	Map<Object, Iface> macToPort = new HashMap<Object, Iface>();
-	Map<Object, Long>trackTime = new HashMap<Object, Long>();
+    ConcurrentHashMap<MACAddress, Iface> macToPort = new ConcurrentHashMap<MACAddress, Iface>();
+    ConcurrentHashMap<MACAddress, Long> trackTime = new ConcurrentHashMap<MACAddress, Long>();
 	long startTime, curTime;
 
 
@@ -50,26 +42,22 @@ public class Switch extends Device
 	{
 		System.out.println("*** -> Received packet: " +
                 etherPacket.toString().replace("\n", "\n\t"));
-		Object macAddressSource = etherPacket.getSourceMAC();
-		Object macAddressDestination = etherPacket.getDestinationMAC();
+        MACAddress macAddressSource = etherPacket.getSourceMAC();
+        MACAddress macAddressDestination = etherPacket.getDestinationMAC();
 
 		/********************************************************************/
-		/* TODO: Handle packets                                             */
-		
-		/********************************************************************/
-
 
 		//check for timeout
-		for (Map.Entry<Object, Long> entry : trackTime.entrySet()){
-			curTime = System.nanoTime();
-			if(((curTime - entry.getValue()) / Math.pow(10, 9)) >15){
-				macToPort.remove(entry.getKey());
-				trackTime.remove(entry.getKey());
-			}
-			//reset timeout
-			else {
-				trackTime.put(entry.getKey(), System.nanoTime());
-			}
+		for (ConcurrentHashMap.Entry<MACAddress, Long> entry : trackTime.entrySet()){
+            curTime = System.nanoTime();
+            if(((curTime - entry.getValue()) / Math.pow(10, 9)) > 15){
+                macToPort.remove(entry.getKey());
+                trackTime.remove(entry.getKey());
+            }
+            //reset timeout
+            else {
+                trackTime.put(entry.getKey(), System.nanoTime());
+            }
 		}
 
 
@@ -90,7 +78,7 @@ public class Switch extends Device
 		//broadcast to all interfces
 		else{
 			//Map<String,Iface> interfaces = getInterfaces();
-			for (Map.Entry<String, Iface> entry : getInterfaces().entrySet()){
+			for (ConcurrentHashMap.Entry<String, Iface> entry : getInterfaces().entrySet()){
 				System.out.println("Broadcasting to :\t" + etherPacket.getDestinationMAC()+ " : " + entry.getValue());
 				try{
 					sendPacket(etherPacket, entry.getValue());
@@ -107,6 +95,8 @@ public class Switch extends Device
 			macToPort.put(macAddressSource, inIface);
 			trackTime.put(macAddressSource, System.nanoTime());
 		}
+
+		/********************************************************************/
 
 	}
 }
