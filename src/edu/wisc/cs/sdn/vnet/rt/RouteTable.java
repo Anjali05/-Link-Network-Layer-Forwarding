@@ -45,7 +45,7 @@ public class RouteTable
                 int entryNet = entry.getMaskAddress() & entry.getDestinationAddress();
                 int ipNet = entry.getMaskAddress() & ip;
 
-                if(entryNet == ipNet && matchMask < entry.getMaskAddress()) {
+                if(entryNet == ipNet && (matchEntry == null || matchMask < entry.getMaskAddress())) {
                     matchEntry = entry;
                     matchMask = entry.getMaskAddress();
                 }

@@ -121,7 +121,7 @@ public class Router extends Device
 			return;
 
 		int destAddress = routeEntry.getGatewayAddress() == 0 ?
-				routeEntry.getDestinationAddress() :  routeEntry.getGatewayAddress();
+				header.getDestinationAddress() :  routeEntry.getGatewayAddress();
 		ArpEntry arpEntry = this.arpCache.lookup(destAddress);
 		if(arpEntry == null)
 			return;
