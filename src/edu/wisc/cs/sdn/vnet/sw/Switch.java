@@ -7,8 +7,10 @@ import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
 
-import java.io.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.Map;
 
 /**
  * @author Aaron Gember-Jacobson
@@ -17,7 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Switch extends Device
 {
 
-    ConcurrentHashMap<MACAddress, SwitchTableEntry> switchTable = new ConcurrentHashMap<MACAddress, SwitchTableEntry>();
+	ConcurrentHashMap<MACAddress, SwitchTableEntry> switchTable = new ConcurrentHashMap<MACAddress, SwitchTableEntry>();
+    private final int TIMEOUT_SECONDS = 15;
 
 	/**
 	 * Creates a router for a specific host.
@@ -41,15 +44,7 @@ public class Switch extends Device
         MACAddress macAddressDestination = etherPacket.getDestinationMAC();
 
 		/********************************************************************/
-
-		//Check for timeout
-		for(ConcurrentHashMap.Entry<MACAddress, SwitchTableEntry> mapEntry : switchTable.entrySet()) {
-			if(((System.nanoTime() - mapEntry.getValue().getCreateTime()) / Math.pow(10, 9)) > 15){
-				switchTable.remove(mapEntry.getKey());
-			}
-		}
-
-		//check for destination MAC address
+		//check for destination MAC address in Table
 		if(switchTable.containsKey(macAddressDestination)){
 			//forward
 			SwitchTableEntry switchTableEntry =  switchTable.get(macAddressDestination);
@@ -57,24 +52,41 @@ public class Switch extends Device
 			sendPacket(etherPacket, switchTableEntry.getInIface());
 		}
 
-		//broadcast to all interfces
+		//broadcast to all interfaces
 		else{
-			for(ConcurrentHashMap.Entry<MACAddress, SwitchTableEntry> mapEntry : switchTable.entrySet()) {
-				if(mapEntry.getValue().getInIface() == inIface)
+			for(Map.Entry<String, Iface> mapEntry : this.getInterfaces().entrySet()) {
+				if(mapEntry.getValue() == inIface)
 					continue;
-				System.out.println("Broadcasting to :\t" + etherPacket.getDestinationMAC()+ " : " + mapEntry.getValue().getInIface());
-				sendPacket(etherPacket, mapEntry.getValue().getInIface());
+				System.out.println("Broadcasting to :\t" + etherPacket.getDestinationMAC()+ " : " + mapEntry.getValue());
+				sendPacket(etherPacket, mapEntry.getValue());
 			}
 		}
 
 		//Add MacAddress to table
 		if(!switchTable.containsKey(macAddressSource)){
 			System.out.println("Adding " + macAddressSource.toString() + " to Switch Table.");
-			switchTable.put(macAddressSource, new SwitchTableEntry(macAddressSource, inIface,  System.nanoTime()));
+			Timer timer = new Timer();
+			timer.schedule(new TimerTask() {
+							   @Override
+							   public void run() {
+								   switchTable.remove(macAddressSource);
+							   }
+						   }, TIMEOUT_SECONDS * 1000);
+			switchTable.put(macAddressSource, new SwitchTableEntry(inIface,  timer));
 		}
 		else {
 			SwitchTableEntry switchTableEntry =  switchTable.get(macAddressSource);
-			switchTableEntry.setCreateTime(System.nanoTime());
+			Timer timer = switchTableEntry.getTimer();
+			timer.cancel();
+			timer.purge();
+			timer = new Timer();
+			timer.schedule(new TimerTask() {
+				@Override
+				public void run() {
+					switchTable.remove(macAddressSource);
+				}
+			}, TIMEOUT_SECONDS * 1000);
+			switchTableEntry.setTimer(timer);
 		}
 
 		/********************************************************************/
@@ -82,30 +94,24 @@ public class Switch extends Device
 	}
 
 	class SwitchTableEntry{
-		private MACAddress  macAddress;
 		private Iface inIface;
-		private long createTime;
+		private Timer timer;
 
-		public SwitchTableEntry(MACAddress macAddress, Iface inIface, long createTime){
-			this.macAddress = macAddress;
+		public SwitchTableEntry(Iface inIface, Timer timer){
 			this.inIface = inIface;
-			this.createTime = createTime;
-		}
-
-		public MACAddress getMacAddress() {
-			return macAddress;
+			this.timer = timer;
 		}
 
 		public Iface getInIface() {
 			return inIface;
 		}
 
-		public long getCreateTime() {
-			return createTime;
+		public Timer getTimer() {
+			return timer;
 		}
 
-		public void setCreateTime(long createTime) {
-			this.createTime = createTime;
+		public void setTimer(Timer timer) {
+			this.timer = timer;
 		}
 	}
 }
