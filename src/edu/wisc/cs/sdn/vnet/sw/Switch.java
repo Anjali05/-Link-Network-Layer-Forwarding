@@ -40,8 +40,8 @@ public class Switch extends Device
 	{
 		System.out.println("*** -> Received packet: " +
                 etherPacket.toString().replace("\n", "\n\t"));
-        MACAddress macAddressSource = etherPacket.getSourceMAC();
-        MACAddress macAddressDestination = etherPacket.getDestinationMAC();
+        final MACAddress macAddressSource = etherPacket.getSourceMAC();
+        final MACAddress macAddressDestination = etherPacket.getDestinationMAC();
 
 		/********************************************************************/
 		//check for destination MAC address in Table
