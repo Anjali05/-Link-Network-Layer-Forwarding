@@ -120,14 +120,17 @@ public class Router extends Device
 		if (routeEntry == null)
 			return;
 
+		if(routeEntry.getInterface() == inIface)
+			return;
+
 		int destAddress = routeEntry.getGatewayAddress() == 0 ?
 				header.getDestinationAddress() :  routeEntry.getGatewayAddress();
 		ArpEntry arpEntry = this.arpCache.lookup(destAddress);
 		if(arpEntry == null)
 			return;
 
-		etherPacket.setDestinationMACAddress(arpEntry.getMac().toString());
-		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toString());
+		etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
+		etherPacket.setSourceMACAddress(routeEntry.getInterface().getMacAddress().toBytes());
 
         header.resetChecksum();
         header.serialize();
