@@ -14,15 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Aaron Gember-Jacobson
  */
 
-
-
 public class Switch extends Device
 {
 
-    ConcurrentHashMap<MACAddress, Iface> macToPort = new ConcurrentHashMap<MACAddress, Iface>();
-    ConcurrentHashMap<MACAddress, Long> trackTime = new ConcurrentHashMap<MACAddress, Long>();
-	long startTime, curTime;
-
+    ConcurrentHashMap<MACAddress, SwitchTableEntry> switchTable = new ConcurrentHashMap<MACAddress, SwitchTableEntry>();
 
 	/**
 	 * Creates a router for a specific host.
@@ -30,7 +25,7 @@ public class Switch extends Device
 	 */
 	public Switch(String host, DumpFile logfile)
 	{
-		super(host,logfile);
+		super(host, logfile);
 	}
 
 	/**
@@ -47,56 +42,70 @@ public class Switch extends Device
 
 		/********************************************************************/
 
-		//check for timeout
-		for (ConcurrentHashMap.Entry<MACAddress, Long> entry : trackTime.entrySet()){
-            curTime = System.nanoTime();
-            if(((curTime - entry.getValue()) / Math.pow(10, 9)) > 15){
-                macToPort.remove(entry.getKey());
-                trackTime.remove(entry.getKey());
-            }
-            //reset timeout
-            else {
-                trackTime.put(entry.getKey(), System.nanoTime());
-            }
+		//Check for timeout
+		for(ConcurrentHashMap.Entry<MACAddress, SwitchTableEntry> mapEntry : switchTable.entrySet()) {
+			if(((System.nanoTime() - mapEntry.getValue().getCreateTime()) / Math.pow(10, 9)) > 15){
+				switchTable.remove(mapEntry.getKey());
+			}
 		}
 
-
 		//check for destination MAC address
-		if(macToPort.containsKey(macAddressDestination)){
+		if(switchTable.containsKey(macAddressDestination)){
 			//forward
-			Iface iface = macToPort.get(macAddressDestination);
-			System.out.println("Entry found for destination address\n Forwarding packet on "+iface);
-			try{
-				sendPacket(etherPacket, iface);
-			}
-			catch (Exception e){
-				System.out.println("Error in forwarding");
-			}
-
+			SwitchTableEntry switchTableEntry =  switchTable.get(macAddressDestination);
+			System.out.println("Entry found for destination address\n Forwarding packet on "+ switchTableEntry.getInIface());
+			sendPacket(etherPacket, switchTableEntry.getInIface());
 		}
 
 		//broadcast to all interfces
 		else{
-			//Map<String,Iface> interfaces = getInterfaces();
-			for (ConcurrentHashMap.Entry<String, Iface> entry : getInterfaces().entrySet()){
-				System.out.println("Broadcasting to :\t" + etherPacket.getDestinationMAC()+ " : " + entry.getValue());
-				try{
-					sendPacket(etherPacket, entry.getValue());
-				}
-				catch (Exception e){
-					System.out.println("Error in broadcasting");
-				}
+			for(ConcurrentHashMap.Entry<MACAddress, SwitchTableEntry> mapEntry : switchTable.entrySet()) {
+				if(mapEntry.getValue().getInIface() == inIface)
+					continue;
+				System.out.println("Broadcasting to :\t" + etherPacket.getDestinationMAC()+ " : " + mapEntry.getValue().getInIface());
+				sendPacket(etherPacket, mapEntry.getValue().getInIface());
 			}
-			//macToPort.put(macAddress, inIface);
 		}
 
-		//check for source MAC address
-		if(!macToPort.containsKey(macAddressSource)){
-			macToPort.put(macAddressSource, inIface);
-			trackTime.put(macAddressSource, System.nanoTime());
+		//Add MacAddress to table
+		if(!switchTable.containsKey(macAddressSource)){
+			System.out.println("Adding " + macAddressSource.toString() + " to Switch Table.");
+			switchTable.put(macAddressSource, new SwitchTableEntry(macAddressSource, inIface,  System.nanoTime()));
+		}
+		else {
+			SwitchTableEntry switchTableEntry =  switchTable.get(macAddressSource);
+			switchTableEntry.setCreateTime(System.nanoTime());
 		}
 
 		/********************************************************************/
 
+	}
+
+	class SwitchTableEntry{
+		private MACAddress  macAddress;
+		private Iface inIface;
+		private long createTime;
+
+		public SwitchTableEntry(MACAddress macAddress, Iface inIface, long createTime){
+			this.macAddress = macAddress;
+			this.inIface = inIface;
+			this.createTime = createTime;
+		}
+
+		public MACAddress getMacAddress() {
+			return macAddress;
+		}
+
+		public Iface getInIface() {
+			return inIface;
+		}
+
+		public long getCreateTime() {
+			return createTime;
+		}
+
+		public void setCreateTime(long createTime) {
+			this.createTime = createTime;
+		}
 	}
 }
